@@ -514,7 +514,7 @@ public class S3LogResource extends AbstractHistoryResource {
   }
 
   private Optional<String> getRequestGroup(final String requestId) {
-    final Optional<SingularityRequestWithState> maybeRequest = requestManager.getRequest(requestId);
+    final Optional<SingularityRequestWithState> maybeRequest = requestManager.getCachedRequest(requestId);
     if (maybeRequest.isPresent()) {
       authorizationHelper.checkForAuthorization(maybeRequest.get().getRequest(), user, SingularityAuthorizationScope.READ);
       return maybeRequest.get().getRequest().getGroup();

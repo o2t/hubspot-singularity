@@ -49,7 +49,11 @@ public class SlaveResource extends AbstractMachineResource<SingularitySlave> {
   @Path("/")
   @ApiOperation("Retrieve the list of all known slaves, optionally filtering by a particular state")
   public List<SingularitySlave> getSlaves(@ApiParam("Optionally specify a particular state to filter slaves by") @QueryParam("state") Optional<MachineState> filterState) {
-    return manager.getObjectsFiltered(filterState);
+    if (filterState.isPresent()) {
+      return manager.getCachedObjectsFiltered(filterState.get());
+    } else {
+      return manager.getCachedObjects();
+    }
   }
 
   @GET
@@ -63,7 +67,7 @@ public class SlaveResource extends AbstractMachineResource<SingularitySlave> {
   @Path("/slave/{slaveId}/details")
   @ApiOperation("Get information about a particular slave")
   public Optional<SingularitySlave> getSlave(@ApiParam("Slave ID") @PathParam("slaveId") String slaveId) {
-    return manager.getObject(slaveId);
+    return manager.getCachedObject(slaveId);
   }
 
   @DELETE

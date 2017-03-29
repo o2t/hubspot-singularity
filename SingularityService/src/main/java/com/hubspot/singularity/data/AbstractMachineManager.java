@@ -2,6 +2,7 @@ package com.hubspot.singularity.data;
 
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.curator.utils.ZKPaths;
@@ -10,6 +11,9 @@ import org.slf4j.LoggerFactory;
 
 import com.codahale.metrics.MetricRegistry;
 import com.google.common.base.Optional;
+import com.google.common.cache.CacheBuilder;
+import com.google.common.cache.CacheLoader;
+import com.google.common.cache.LoadingCache;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.hubspot.singularity.MachineState;
@@ -31,6 +35,7 @@ public abstract class AbstractMachineManager<T extends SingularityMachineAbstrac
   private final Transcoder<T> transcoder;
   private final Transcoder<SingularityMachineStateHistoryUpdate> historyTranscoder;
   private final Transcoder<SingularityExpiringMachineState> expiringMachineStateTranscoder;
+  private final LoadingCache<String, T> machineCache;
 
   public AbstractMachineManager(CuratorFramework curator, SingularityConfiguration configuration, MetricRegistry metricRegistry, Transcoder<T> transcoder,
       Transcoder<SingularityMachineStateHistoryUpdate> historyTranscoder, Transcoder<SingularityExpiringMachineState> expiringMachineStateTranscoder) {
@@ -39,6 +44,24 @@ public abstract class AbstractMachineManager<T extends SingularityMachineAbstrac
     this.transcoder = transcoder;
     this.historyTranscoder = historyTranscoder;
     this.expiringMachineStateTranscoder = expiringMachineStateTranscoder;
+    this.machineCache = CacheBuilder.newBuilder()
+        .expireAfterWrite(configuration.getCacheUiDataForMs(), TimeUnit.MILLISECONDS)
+        .build(new CacheLoader<String, T>() {
+          @Override
+          public T load(String key) {
+            return getObject(key).orNull();
+          }
+
+          @Override
+          public Map<String, T> loadAll(Iterable<? extends String> keys) throws Exception {
+            List<T> objects = getObjects();
+            Map<String, T> objectsById = Maps.newHashMapWithExpectedSize(objects.size());
+            for (T object : objects) {
+              objectsById.put(object.getId(), object);
+            }
+            return objectsById;
+          }
+        });
   }
 
   protected abstract String getRoot();
@@ -49,6 +72,15 @@ public abstract class AbstractMachineManager<T extends SingularityMachineAbstrac
 
   public List<SingularityMachineStateHistoryUpdate> getHistory(String objectId) {
     return getAsyncChildren(getHistoryPath(objectId), historyTranscoder);
+  }
+
+  public List<T> getCachedObjects() {
+    try {
+      return machineCache.getAll(getObjectIds()).values().asList();
+    } catch (Exception e) {
+      LOG.warn("Exception fetching machine objects from cache", e);
+      return getObjects();
+    }
   }
 
   public List<T> getObjects() {
@@ -75,18 +107,17 @@ public abstract class AbstractMachineManager<T extends SingularityMachineAbstrac
     return filteredObjectIds;
   }
 
-  public List<T> getObjectsFiltered(MachineState state) {
-    return getObjectsFiltered(Optional.of(state));
+  public List<T> getCachedObjectsFiltered(MachineState state) {
+    return getObjectsFiltered(state, true);
   }
 
-  public List<T> getObjectsFiltered(Optional<MachineState> state) {
-    List<T> objects = getObjects();
+  public List<T> getObjectsFiltered(MachineState state) {
+    return getObjectsFiltered(state, false);
+  }
 
-    if (!state.isPresent()) {
-      return objects;
-    }
-
-    return getObjectsFiltered(objects, state.get());
+  public List<T> getObjectsFiltered(MachineState state, boolean useCache) {
+    List<T> objects = useCache ? getCachedObjects() : getObjects();
+    return getObjectsFiltered(objects, state);
   }
 
   private List<T> getObjectsFiltered(List<T> objects, MachineState state) {
@@ -103,6 +134,10 @@ public abstract class AbstractMachineManager<T extends SingularityMachineAbstrac
 
   private String getObjectPath(String objectId) {
     return ZKPaths.makePath(getRoot(), objectId);
+  }
+
+  public Optional<T> getCachedObject(String objectId) {
+    return Optional.fromNullable(machineCache.getUnchecked(objectId));
   }
 
   public Optional<T> getObject(String objectId) {

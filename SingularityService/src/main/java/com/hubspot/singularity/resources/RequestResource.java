@@ -436,7 +436,7 @@ public class RequestResource extends AbstractRequestResource {
   @Path("/active")
   @ApiOperation(value="Retrieve the list of active requests", response=SingularityRequestParent.class, responseContainer="List")
   public List<SingularityRequestParent> getActiveRequests() {
-    return getRequestsWithDeployState(requestManager.getActiveRequests(), SingularityAuthorizationScope.READ);
+    return getRequestsWithDeployState(requestManager.getCachedRequests(RequestState.ACTIVE), SingularityAuthorizationScope.READ);
   }
 
   private List<SingularityRequestParent> getRequestsWithDeployState(Iterable<SingularityRequestWithState> requests, final SingularityAuthorizationScope scope) {
@@ -471,7 +471,7 @@ public class RequestResource extends AbstractRequestResource {
   @Path("/paused")
   @ApiOperation(value="Retrieve the list of paused requests", response=SingularityRequestParent.class, responseContainer="List")
   public List<SingularityRequestParent> getPausedRequests() {
-    return getRequestsWithDeployState(requestManager.getPausedRequests(), SingularityAuthorizationScope.READ);
+    return getRequestsWithDeployState(requestManager.getCachedRequests(RequestState.PAUSED), SingularityAuthorizationScope.READ);
   }
 
   @GET
@@ -479,7 +479,7 @@ public class RequestResource extends AbstractRequestResource {
   @Path("/cooldown")
   @ApiOperation(value="Retrieve the list of requests in system cooldown", response=SingularityRequestParent.class, responseContainer="List")
   public List<SingularityRequestParent> getCooldownRequests() {
-    return getRequestsWithDeployState(requestManager.getCooldownRequests(), SingularityAuthorizationScope.READ);
+    return getRequestsWithDeployState(requestManager.getCachedRequests(RequestState.SYSTEM_COOLDOWN), SingularityAuthorizationScope.READ);
   }
 
   @GET
@@ -487,14 +487,14 @@ public class RequestResource extends AbstractRequestResource {
   @Path("/finished")
   @ApiOperation(value="Retreive the list of finished requests (Scheduled requests which have exhausted their schedules)", response=SingularityRequestParent.class, responseContainer="List")
   public List<SingularityRequestParent> getFinishedRequests() {
-    return getRequestsWithDeployState(requestManager.getFinishedRequests(), SingularityAuthorizationScope.READ);
+    return getRequestsWithDeployState(requestManager.getCachedRequests(RequestState.FINISHED), SingularityAuthorizationScope.READ);
   }
 
   @GET
   @PropertyFiltering
   @ApiOperation(value="Retrieve the list of all requests", response=SingularityRequestParent.class, responseContainer="List")
   public List<SingularityRequestParent> getRequests() {
-    return getRequestsWithDeployState(requestManager.getRequests(), SingularityAuthorizationScope.READ);
+    return getRequestsWithDeployState(requestManager.getCachedRequests(), SingularityAuthorizationScope.READ);
   }
 
   @GET
@@ -502,7 +502,7 @@ public class RequestResource extends AbstractRequestResource {
   @Path("/queued/pending")
   @ApiOperation(value="Retrieve the list of pending requests", response=SingularityPendingRequest.class, responseContainer="List")
   public Iterable<SingularityPendingRequest> getPendingRequests() {
-    return authorizationHelper.filterByAuthorizedRequests(user, requestManager.getPendingRequests(), SingularityTransformHelpers.PENDING_REQUEST_TO_REQUEST_ID, SingularityAuthorizationScope.READ);
+    return authorizationHelper.filterByAuthorizedRequests(user, requestManager.getCachedPendingRequests(), SingularityTransformHelpers.PENDING_REQUEST_TO_REQUEST_ID, SingularityAuthorizationScope.READ);
   }
 
   @GET
@@ -510,7 +510,7 @@ public class RequestResource extends AbstractRequestResource {
   @Path("/queued/cleanup")
   @ApiOperation(value="Retrieve the list of requests being cleaned up", response=SingularityRequestCleanup.class, responseContainer="List")
   public Iterable<SingularityRequestCleanup> getCleanupRequests() {
-    return authorizationHelper.filterByAuthorizedRequests(user, requestManager.getCleanupRequests(), SingularityTransformHelpers.REQUEST_CLEANUP_TO_REQUEST_ID, SingularityAuthorizationScope.READ);
+    return authorizationHelper.filterByAuthorizedRequests(user, requestManager.getCachedCleanupRequests(), SingularityTransformHelpers.REQUEST_CLEANUP_TO_REQUEST_ID, SingularityAuthorizationScope.READ);
   }
 
   @GET

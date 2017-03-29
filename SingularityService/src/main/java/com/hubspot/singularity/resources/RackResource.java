@@ -51,7 +51,11 @@ public class RackResource extends AbstractMachineResource<SingularityRack> {
   @Path("/")
   @ApiOperation("Retrieve the list of all known racks, optionally filtering by a particular state")
   public List<SingularityRack> getRacks(@ApiParam("Optionally specify a particular state to filter racks by") @QueryParam("state") Optional<MachineState> filterState) {
-    return manager.getObjectsFiltered(filterState);
+    if (filterState.isPresent()) {
+      return manager.getObjectsFiltered(filterState.get());
+    } else {
+      return manager.getObjects();
+    }
   }
 
   @GET

@@ -3,6 +3,7 @@ package com.hubspot.singularity.data;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.curator.utils.ZKPaths;
@@ -12,9 +13,14 @@ import org.slf4j.LoggerFactory;
 import com.codahale.metrics.MetricRegistry;
 import com.google.common.base.Optional;
 import com.google.common.base.Predicate;
+import com.google.common.cache.Cache;
+import com.google.common.cache.CacheBuilder;
+import com.google.common.cache.CacheLoader;
+import com.google.common.cache.LoadingCache;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import com.hubspot.singularity.RequestCleanupType;
@@ -45,12 +51,17 @@ import com.hubspot.singularity.expiring.SingularityExpiringSkipHealthchecks;
 public class RequestManager extends CuratorAsyncManager {
 
   private static final Logger LOG = LoggerFactory.getLogger(RequestManager.class);
+  private static final String LIST_ALL_CACHE_KEY = "all";
 
   private final Transcoder<SingularityRequestWithState> requestTranscoder;
   private final Transcoder<SingularityPendingRequest> pendingRequestTranscoder;
   private final Transcoder<SingularityRequestCleanup> requestCleanupTranscoder;
   private final Transcoder<SingularityRequestHistory> requestHistoryTranscoder;
   private final Transcoder<SingularityRequestLbCleanup> requestLbCleanupTranscoder;
+
+  private final LoadingCache<String, SingularityRequestWithState> requestCache;
+  private final Cache<String, List<SingularityPendingRequest>> pendingRequestCache;
+  private final Cache<String, List<SingularityRequestCleanup>> cleanupRequestCache;
 
   private final SingularityEventListener singularityEventListener;
 
@@ -81,7 +92,7 @@ public class RequestManager extends CuratorAsyncManager {
   public RequestManager(CuratorFramework curator, SingularityConfiguration configuration, MetricRegistry metricRegistry, SingularityEventListener singularityEventListener,
       Transcoder<SingularityRequestCleanup> requestCleanupTranscoder, Transcoder<SingularityRequestWithState> requestTranscoder, Transcoder<SingularityRequestLbCleanup> requestLbCleanupTranscoder,
       Transcoder<SingularityPendingRequest> pendingRequestTranscoder, Transcoder<SingularityRequestHistory> requestHistoryTranscoder, Transcoder<SingularityExpiringBounce> expiringBounceTranscoder,
-      Transcoder<SingularityExpiringScale> expiringScaleTranscoder,  Transcoder<SingularityExpiringPause> expiringPauseTranscoder, Transcoder<SingularityExpiringSkipHealthchecks> expiringSkipHealthchecksTranscoder) {
+      Transcoder<SingularityExpiringScale> expiringScaleTranscoder, Transcoder<SingularityExpiringPause> expiringPauseTranscoder, Transcoder<SingularityExpiringSkipHealthchecks> expiringSkipHealthchecksTranscoder) {
     super(curator, configuration, metricRegistry);
     this.requestTranscoder = requestTranscoder;
     this.requestCleanupTranscoder = requestCleanupTranscoder;
@@ -96,6 +107,30 @@ public class RequestManager extends CuratorAsyncManager {
         SingularityExpiringScale.class, expiringScaleTranscoder,
         SingularityExpiringSkipHealthchecks.class, expiringSkipHealthchecksTranscoder
         );
+    this.requestCache = CacheBuilder.newBuilder()
+        .expireAfterWrite(configuration.getCacheUiDataForMs(), TimeUnit.MILLISECONDS)
+        .build(new CacheLoader<String, SingularityRequestWithState>() {
+          @Override
+          public SingularityRequestWithState load(String key) {
+            return getRequest(key).orNull();
+          }
+
+          @Override
+          public Map<String, SingularityRequestWithState> loadAll(Iterable<? extends String> keys) throws Exception {
+            List<SingularityRequestWithState> requests = getRequests();
+            Map<String, SingularityRequestWithState> allRequests = Maps.newHashMapWithExpectedSize(requests.size());
+            for (SingularityRequestWithState requestWithState : requests) {
+              allRequests.put(requestWithState.getRequest().getId(), requestWithState);
+            }
+            return allRequests;
+          }
+        });
+    this.pendingRequestCache = CacheBuilder.newBuilder()
+        .expireAfterWrite(configuration.getCacheUiDataForMs(), TimeUnit.MILLISECONDS)
+        .build();
+    this.cleanupRequestCache = CacheBuilder.newBuilder()
+        .expireAfterWrite(configuration.getCacheUiDataForMs(), TimeUnit.MILLISECONDS)
+        .build();
   }
 
   private String getRequestPath(String requestId) {
@@ -270,8 +305,30 @@ public class RequestManager extends CuratorAsyncManager {
     return delete(getRequestPath(request.getId()));
   }
 
+  public List<SingularityPendingRequest> getCachedPendingRequests() {
+    List<SingularityPendingRequest> maybePendingRequests = pendingRequestCache.getIfPresent(LIST_ALL_CACHE_KEY);
+    if (maybePendingRequests != null) {
+      return maybePendingRequests;
+    } else {
+      maybePendingRequests = getPendingRequests();
+      pendingRequestCache.put(LIST_ALL_CACHE_KEY, maybePendingRequests);
+      return maybePendingRequests;
+    }
+  }
+
   public List<SingularityPendingRequest> getPendingRequests() {
     return getAsyncChildren(PENDING_PATH_ROOT, pendingRequestTranscoder);
+  }
+
+  public List<SingularityRequestCleanup> getCachedCleanupRequests() {
+    List<SingularityRequestCleanup> maybeCleanupRequests = cleanupRequestCache.getIfPresent(LIST_ALL_CACHE_KEY);
+    if (maybeCleanupRequests != null) {
+      return maybeCleanupRequests;
+    } else {
+      maybeCleanupRequests = getCleanupRequests();
+      cleanupRequestCache.put(LIST_ALL_CACHE_KEY, maybeCleanupRequests);
+      return maybeCleanupRequests;
+    }
   }
 
   public List<SingularityRequestCleanup> getCleanupRequests() {
@@ -303,6 +360,10 @@ public class RequestManager extends CuratorAsyncManager {
     });
   }
 
+  public Iterable<SingularityRequestWithState> getCachedRequests(RequestState... states) {
+    return filter(getCachedRequests(), states);
+  }
+
   private Iterable<SingularityRequestWithState> getRequests(RequestState... states) {
     return filter(getRequests(), states);
   }
@@ -323,8 +384,26 @@ public class RequestManager extends CuratorAsyncManager {
     return getRequests(RequestState.FINISHED);
   }
 
+  public List<SingularityRequestWithState> getCachedRequests() {
+    try {
+      return requestCache.getAll(getAllRequestIds()).values().asList();
+    } catch (Exception e) {
+      LOG.warn("Exception loading data to cache", e);
+      return getRequests();
+    }
+  }
+
   public List<SingularityRequestWithState> getRequests() {
     return getAsyncChildren(NORMAL_PATH_ROOT, requestTranscoder);
+  }
+
+  public Optional<SingularityRequestWithState> getCachedRequest(String requestId) {
+    try {
+      return Optional.fromNullable(requestCache.get(requestId));
+    } catch (Exception e) {
+      LOG.warn("Exception fetching from cache", e);
+      return getRequest(requestId);
+    }
   }
 
   public Optional<SingularityRequestWithState> getRequest(String requestId) {

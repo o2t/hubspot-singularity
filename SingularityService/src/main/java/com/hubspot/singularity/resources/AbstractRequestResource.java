@@ -34,7 +34,7 @@ public class AbstractRequestResource {
   }
 
   protected SingularityRequestWithState fetchRequestWithState(String requestId) {
-    Optional<SingularityRequestWithState> request = requestManager.getRequest(requestId);
+    Optional<SingularityRequestWithState> request = requestManager.getCachedRequest(requestId);
 
     checkNotFound(request.isPresent(), "Couldn't find request with id %s", requestId);
 

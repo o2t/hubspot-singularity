@@ -37,7 +37,7 @@ public class RequestGroupResource {
     @GET
     @ApiOperation(value="Get a list of Singularity request groups")
     public List<SingularityRequestGroup> getRequestGroupIds() {
-        return requestGroupManager.getRequestGroups();
+        return requestGroupManager.getCachedRequestGroups();
     }
 
     @GET

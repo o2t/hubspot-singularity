@@ -321,6 +321,8 @@ public class SingularityConfiguration extends Configuration {
 
   private int maxActiveOnDemandTasksPerRequest = 0;
 
+  private long cacheUiDataForMs = 30000;
+
   public long getAskDriverToKillTasksAgainAfterMillis() {
     return askDriverToKillTasksAgainAfterMillis;
   }
@@ -1306,5 +1308,13 @@ public class SingularityConfiguration extends Configuration {
 
   public void setMaxActiveOnDemandTasksPerRequest(int maxActiveOnDemandTasksPerRequest) {
     this.maxActiveOnDemandTasksPerRequest = maxActiveOnDemandTasksPerRequest;
+  }
+
+  public long getCacheUiDataForMs() {
+    return cacheUiDataForMs;
+  }
+
+  public void setCacheUiDataForMs(long cacheUiDataForMs) {
+    this.cacheUiDataForMs = cacheUiDataForMs;
   }
 }
