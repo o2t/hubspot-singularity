@@ -10,11 +10,27 @@ import com.google.common.collect.Maps;
 
 public enum ExtendedTaskState {
 
-  TASK_LAUNCHED("launched", false, Optional.<TaskState> absent()), TASK_STAGING("staging", false, Optional.of(TaskState.TASK_STAGING)),
-  TASK_STARTING("starting", false, Optional.of(TaskState.TASK_STARTING)), TASK_RUNNING("running", false, Optional.of(TaskState.TASK_RUNNING)),
-  TASK_CLEANING("cleaning", false, Optional.<TaskState> absent()), TASK_KILLING("killing", false, Optional.of(TaskState.TASK_KILLING)), TASK_FINISHED("finished", true, Optional.of(TaskState.TASK_FINISHED)),
-  TASK_FAILED("failed", true, Optional.of(TaskState.TASK_FAILED)), TASK_KILLED("killed", true, Optional.of(TaskState.TASK_KILLED)),
-  TASK_LOST("lost", true, Optional.of(TaskState.TASK_LOST)), TASK_LOST_WHILE_DOWN("lost", true, Optional.<TaskState> absent()), TASK_ERROR("error", true, Optional.of(TaskState.TASK_ERROR));
+  TASK_LAUNCHED("launched", false, Optional.<TaskState> absent()),
+  TASK_STAGING("staging", false, Optional.of(TaskState.TASK_STAGING)),
+  TASK_STARTING("starting", false, Optional.of(TaskState.TASK_STARTING)),
+  TASK_RUNNING("running", false, Optional.of(TaskState.TASK_RUNNING)),
+  TASK_CLEANING("cleaning", false, Optional.<TaskState> absent()),
+  TASK_KILLING("killing", false, Optional.of(TaskState.TASK_KILLING)),
+  TASK_FINISHED("finished", true, Optional.of(TaskState.TASK_FINISHED)),
+  TASK_FAILED("failed", true, Optional.of(TaskState.TASK_FAILED)),
+  TASK_KILLED("killed", true, Optional.of(TaskState.TASK_KILLED)),
+  TASK_LOST("lost", true, Optional.of(TaskState.TASK_LOST)),
+  TASK_LOST_WHILE_DOWN("lost", true, Optional.<TaskState> absent()),
+  TASK_ERROR("error", true, Optional.of(TaskState.TASK_ERROR)),
+
+  // new in mesos 1.0 : partition aware specific states.
+  // since we don't support partition awareness in singularity, assume tasks are done
+  TASK_UNREACHABLE("unreachable", true, Optional.of(TaskState.TASK_UNREACHABLE)),
+  TASK_GONE("unreachable", true, Optional.of(TaskState.TASK_GONE)),
+  TASK_GONE_BY_OPERATOR("unreachable", true, Optional.of(TaskState.TASK_GONE_BY_OPERATOR)),
+  TASK_DROPPED("dropped", true, Optional.of(TaskState.TASK_DROPPED)),
+  TASK_UNKNOWN("unknown", true, Optional.of(TaskState.TASK_UNKNOWN))
+  ;
 
   private static final Map<TaskState, ExtendedTaskState> map;
   static {

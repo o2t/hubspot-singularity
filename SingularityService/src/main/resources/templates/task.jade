@@ -42,6 +42,16 @@ html
                 | The task finished running and exited with a normal exit code. Since this task was not part of a scheduled request, it is worth investigating whether this was the expected behavior. Often this means the task actually failed and exited with an incorrect exit code.
             if taskStateKilled
               | The task was killed by either Singularity, the OOM killer, or user action.
+            if taskStateDropped
+              | Unexpected DROPPED state. This should not happen since Singularity is not partition aware.
+            if taskStateUnreachable
+              | Unexpected UNREACHABLE state. This should not happen since Singularity is not partition aware.
+            if taskStateGone
+              | Unexpected GONE state. This should not happen since Singularity is not partition aware.
+            if taskStateGoneByOperator
+              | Unexpected GONE_BY_OPERATOR state. This should not happen since Singularity is not partition aware.
+            if taskStateUnknwon
+              | Unexpected UNKNOWN state. This should not happen since Singularity is not partition aware.
             if taskStateFailed
               | The task failed with a non-zero exit code. Consider investigating to see if there is an application level error.
             if taskStateRunning

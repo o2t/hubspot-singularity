@@ -1,4 +1,4 @@
-FROM mesosphere/mesos:0.28.1-2.0.20.ubuntu1404
+FROM mesosphere/mesos:1.1.1
 ## mesos + java used to build hubspot/singularitybase
 
 MAINTAINER platform-infrastructure-groups@hubspot.com

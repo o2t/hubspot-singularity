@@ -172,6 +172,11 @@ public class SmtpMailer implements SingularityMailer, Managed {
     templateProperties.put("taskStateFinished", taskState == ExtendedTaskState.TASK_FINISHED);
     templateProperties.put("taskStateKilled", taskState == ExtendedTaskState.TASK_KILLED);
     templateProperties.put("taskStateRunning", taskState == ExtendedTaskState.TASK_RUNNING);
+    templateProperties.put("taskStateDropped", taskState == ExtendedTaskState.TASK_DROPPED);
+    templateProperties.put("taskStateUnreachable", taskState == ExtendedTaskState.TASK_UNREACHABLE);
+    templateProperties.put("taskStateGone", taskState == ExtendedTaskState.TASK_GONE);
+    templateProperties.put("taskStateGoneByOperator", taskState == ExtendedTaskState.TASK_GONE_BY_OPERATOR);
+    templateProperties.put("taskStateUnknwon", taskState == ExtendedTaskState.TASK_UNKNOWN);
 
     templateProperties.put("taskHasMetadata", !taskMetadata.isEmpty());
     templateProperties.put("taskMetadata", mailTemplateHelpers.getJadeTaskMetadata(taskMetadata));

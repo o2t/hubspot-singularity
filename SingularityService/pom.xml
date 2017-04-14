@@ -5,7 +5,7 @@
   <parent>
     <groupId>com.hubspot</groupId>
     <artifactId>Singularity</artifactId>
-    <version>0.15.0-SNAPSHOT</version>
+    <version>0.16.0-SNAPSHOT</version>
   </parent>
 
   <artifactId>SingularityService</artifactId>
@@ -609,9 +609,9 @@
             <configuration>
               <images>
                 <image>
-                  <name>hubspot/singularityservice:${project.version}</name>
+                  <name>${hub.docker.com.username}/singularityservice:${project.version}</name>
                   <build>
-                    <from>hubspot/singularitybase:${mesos.docker.tag}-${singularitybase.image.revision}</from>
+                    <from>${hub.docker.com.username}/singularitybase:${mesos.docker.tag}-${singularitybase.image.revision}</from>
                     <maintainer>platform-infrastructure-groups@hubspot.com</maintainer>
                     <ports>
                       <port>7099</port>

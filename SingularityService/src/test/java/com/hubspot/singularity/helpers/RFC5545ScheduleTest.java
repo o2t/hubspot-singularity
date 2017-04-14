@@ -1,10 +1,13 @@
 package com.hubspot.singularity.helpers;
 
 import java.util.Date;
+import java.util.Locale;
+import java.util.TimeZone;
 import java.util.concurrent.TimeUnit;
 
 import org.junit.Assert;
 import org.junit.Test;
+import org.skife.jdbi.cglib.core.Local;
 
 public class RFC5545ScheduleTest {
   @Test
@@ -24,6 +27,7 @@ public class RFC5545ScheduleTest {
 
   @Test
   public void testRecurInPastDoesNotGiveNext() throws Exception {
+    TimeZone.setDefault (TimeZone.getTimeZone ("GMT"));
     String schedule = "FREQ=YEARLY;INTERVAL=4;BYMONTH=11;BYDAY=TU;BYMONTHDAY=2,3,4,5,6,7,8;COUNT=1";
     Assert.assertEquals(new RFC5545Schedule(schedule).getNextValidTime(), null);
   }
